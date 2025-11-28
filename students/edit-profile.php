@@ -2,65 +2,234 @@
 require "../backend/db.php";
 require "includes/student-auth.php";
 
-// Logged-in student ID
 $student_id = $_SESSION['student_id'];
 
-// پہلے سے موجود profile fetch کریں
+// Fetch existing profile
 $stmt = $conn->prepare("SELECT * FROM students_profiles WHERE student_id = ?");
 $stmt->execute([$student_id]);
 $profile = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// فارم submit ہونے پر data update کریں
+// If form submit
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $academic_history = $_POST['academic_history'];
-    $personal_info    = $_POST['personal_info'];
-    $preferences      = $_POST['preferences'];
-    $future_goals     = $_POST['future_goals'];
+
+    $data = [
+        $_POST['date_of_birth'],
+        $_POST['phone'],
+        $_POST['cnic'],
+        $_POST['gender'],
+        $_POST['education_level'],
+        $_POST['subjects'],
+        $_POST['grades'],
+        $_POST['desired_field'],
+        $_POST['programs_interest'],
+        $_POST['preferred_city'],
+        $student_id
+    ];
 
     if ($profile) {
-        // اگر profile پہلے سے موجود ہے تو update کریں
-        $stmt = $conn->prepare("UPDATE students_profiles SET academic_history = ?, personal_info = ?, preferences = ?, future_goals = ? WHERE student_id = ?");
-        $stmt->execute([$academic_history, $personal_info, $preferences, $future_goals, $student_id]);
+        $query = $conn->prepare("
+            UPDATE students_profiles SET 
+            date_of_birth=?, phone=?, cnic=?, gender=?,
+            education_level=?, subjects=?, grades=?,
+            desired_field=?, programs_interest=?, preferred_city=?
+            WHERE student_id=?
+        ");
     } else {
-        // اگر profile موجود نہیں تو insert کریں
-        $stmt = $conn->prepare("INSERT INTO students_profiles (student_id, academic_history, personal_info, preferences, future_goals) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$student_id, $academic_history, $personal_info, $preferences, $future_goals]);
+        $query = $conn->prepare("
+            INSERT INTO students_profiles 
+            (date_of_birth,phone,cnic,gender,education_level,subjects,grades,
+            desired_field,programs_interest,preferred_city,student_id) 
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+        ");
     }
 
+    $query->execute($data);
     $success = "Profile updated successfully!";
-    // دوبارہ profile fetch کریں تاکہ updated values دکھائی دیں
-    $stmt = $conn->prepare("SELECT * FROM students_profiles WHERE student_id = ?");
-    $stmt->execute([$student_id]);
-    $profile = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 ?>
 
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Update Profile</title>
+
+    <!-- MERGED FORM CSS -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background: #f3f8fa;
+        }
+
+        .form-container {
+            width: 90%;
+            max-width: 650px;
+            margin: 40px auto;
+            background: #ffffff;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            transition: 0.3s ease;
+        }
+
+        .form-container:hover {
+            transform: translateY(-4px);
+        }
+
+        h2 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 25px;
+            background: linear-gradient(135deg, #1abc9c, #3498db);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+
+        h3 {
+            margin-top: 25px;
+            color: #1abc9c;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0 20px 0;
+            border-radius: 6px;
+            border: 1px solid #d7d7d7;
+            background: #fafafa;
+            font-size: 15px;
+            transition: 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            border-color: #3498db;
+            background: #fff;
+            outline: none;
+            box-shadow: 0 0 6px rgba(52,152,219,0.3);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #1abc9c, #27ae60);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s ease;
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+        }
+
+        .success {
+            padding: 12px;
+            background: #2ecc71;
+            color: white;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* =============================== */
+        /* STYLING FOR: Check Edited Profile BUTTON */
+        /* =============================== */
+        .btn-edit {
+            display: block;
+            margin-top: 25px;
+            text-align: center;
+            padding: 12px 0;
+            background: linear-gradient(135deg, #1abc9c, #3498db);
+            color: white !important;
+            text-decoration: none;
+            font-size: 17px;
+            font-weight: 600;
+            border-radius: 6px;
+            transition: 0.3s ease;
+        }
+
+        .btn-edit:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0px 3px 10px rgba(0,0,0,0.15);
+        }
+
+    </style>
+</head>
+
+<body>
+
 <?php include "includes/header.php"; ?>
-<link rel="stylesheet" href="css/student.css">
 
-<div class="dashboard-container">
-    <h2 class="welcome">Edit Profile ✏️</h2>
+<div class="form-container">
 
-    <?php if(isset($success)) { ?>
-        <p class="success-msg"><?= htmlspecialchars($success); ?></p>
-    <?php } ?>
+    <h2>Update Profile ✏️</h2>
 
-    <form action="" method="POST" class="profile-form">
-        <label for="academic_history">Academic History:</label>
-        <textarea name="academic_history" id="academic_history" rows="4"><?= htmlspecialchars($profile['academic_history'] ?? ''); ?></textarea>
+    <?php if (!empty($success)) echo "<p class='success'>$success</p>"; ?>
 
-        <label for="personal_info">Personal Info:</label>
-        <textarea name="personal_info" id="personal_info" rows="4"><?= htmlspecialchars($profile['personal_info'] ?? ''); ?></textarea>
+    <form method="POST">
 
-        <label for="preferences">Preferences:</label>
-        <textarea name="preferences" id="preferences" rows="4"><?= htmlspecialchars($profile['preferences'] ?? ''); ?></textarea>
+        <h3>Personal Information</h3>
 
-        <label for="future_goals">Future Goals:</label>
-        <textarea name="future_goals" id="future_goals" rows="4"><?= htmlspecialchars($profile['future_goals'] ?? ''); ?></textarea>
+        <input type="date" name="date_of_birth"
+               value="<?= $profile['date_of_birth'] ?? '' ?>" required>
 
-        <button type="submit" class="btn-edit">Update Profile</button>
+        <input type="text" name="phone" placeholder="Phone Number"
+               value="<?= $profile['phone'] ?? '' ?>" required>
+
+        <input type="text" name="cnic" placeholder="CNIC"
+               value="<?= $profile['cnic'] ?? '' ?>" required>
+
+        <select name="gender" required>
+            <option value="">Select Gender</option>
+            <option value="Male" <?= ($profile['gender'] ?? '')=='Male'?'selected':'' ?>>Male</option>
+            <option value="Female" <?= ($profile['gender'] ?? '')=='Female'?'selected':'' ?>>Female</option>
+            <option value="Other" <?= ($profile['gender'] ?? '')=='Other'?'selected':'' ?>>Other</option>
+        </select>
+
+        <h3>Academic Information</h3>
+
+        <select name="education_level" required>
+            <option value="">Select Education Level</option>
+            <option value="Matric" <?= ($profile['education_level'] ?? '')=='Matric'?'selected':'' ?>>Matric</option>
+            <option value="Intermediate" <?= ($profile['education_level'] ?? '')=='Intermediate'?'selected':'' ?>>Intermediate</option>
+            <option value="Bachelors" <?= ($profile['education_level'] ?? '')=='Bachelors'?'selected':'' ?>>Bachelors</option>
+            <option value="Masters" <?= ($profile['education_level'] ?? '')=='Masters'?'selected':'' ?>>Masters</option>
+        </select>
+
+        <input type="text" name="subjects" placeholder="Subjects Studied"
+               value="<?= $profile['subjects'] ?? '' ?>">
+
+        <input type="text" name="grades" placeholder="Grades / Marks"
+               value="<?= $profile['grades'] ?? '' ?>">
+
+        <h3>Preferences</h3>
+
+        <input type="text" name="desired_field" placeholder="Desired Field of Study"
+               value="<?= $profile['desired_field'] ?? '' ?>">
+
+        <input type="text" name="programs_interest" placeholder="Programs of Interest"
+               value="<?= $profile['programs_interest'] ?? '' ?>">
+
+        <input type="text" name="preferred_city" placeholder="Preferred City / Location"
+               value="<?= $profile['preferred_city'] ?? '' ?>">
+
+        <button type="submit">Save Profile</button>
     </form>
-     <a href="profile.php" class="btn-edit">✏️Check Edited Profile</a>
+
+    <a href="profile.php" class="btn-edit">Check Edited Profile</a>
 </div>
 
 <?php include "includes/footer.php"; ?>
+
+</body>
+</html>

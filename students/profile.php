@@ -2,98 +2,146 @@
 require "../backend/db.php";
 require "includes/student-auth.php";
 
+// Logged-in student ID
 $student_id = $_SESSION['student_id'];
 
-// Fetch existing profile
-$stmt = $conn->prepare("SELECT * FROM students_profiles WHERE student_id = ?");
-$stmt->execute([$student_id]);
-$profile = $stmt->fetch(PDO::FETCH_ASSOC);
+// Fetch basic student info
+$stmt1 = $conn->prepare("SELECT fullname, email FROM students WHERE id = ?");
+$stmt1->execute([$student_id]);
+$student = $stmt1->fetch(PDO::FETCH_ASSOC);
 
-// If form submit
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-
-    $data = [
-        $_POST['date_of_birth'],
-        $_POST['phone'],
-        $_POST['cnic'],
-        $_POST['gender'],
-        $_POST['education_level'],
-        $_POST['subjects'],
-        $_POST['grades'],
-        $_POST['desired_field'],
-        $_POST['programs_interest'],
-        $_POST['preferred_city'],
-        $student_id
-    ];
-
-    // If profile exists → Update
-    if ($profile) {
-        $query = $conn->prepare("
-            UPDATE students_profiles SET 
-            date_of_birth=?, phone=?, cnic=?, gender=?,
-            education_level=?, subjects=?, grades=?,
-            desired_field=?, programs_interest=?, preferred_city=?
-            WHERE student_id=?
-        ");
-    } 
-    else { // Insert new
-        $query = $conn->prepare("
-            INSERT INTO students_profiles 
-            (date_of_birth,phone,cnic,gender,education_level,subjects,grades,
-            desired_field,programs_interest,preferred_city,student_id) 
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
-        ");
-    }
-
-    $query->execute($data);
-    $success = "Profile updated successfully!";
-}
-
+// Fetch full profile
+$stmt2 = $conn->prepare("SELECT * FROM students_profiles WHERE student_id = ?");
+$stmt2->execute([$student_id]);
+$profile = $stmt2->fetch(PDO::FETCH_ASSOC);
 ?>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Profile</title>
+
+    <!-- MERGED CSS -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f0f6f9;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .dashboard-container {
+            width: 90%;
+            max-width: 900px;
+            margin: 40px auto;
+        }
+
+        .welcome {
+            text-align: center;
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1abc9c, #3498db);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 35px;
+        }
+
+        .profile-card {
+            background: #fff;
+            padding: 30px 35px;
+            border-radius: 12px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+            font-size: 17px;
+            line-height: 1.8;
+        }
+
+        .profile-card p {
+            margin: 10px 0;
+        }
+
+        .profile-card strong {
+            color: #1abc9c;
+        }
+
+        .section-title {
+            margin-top: 25px;
+            font-size: 22px;
+            font-weight: 700;
+            color: #3498db;
+            border-left: 5px solid #1abc9c;
+            padding-left: 10px;
+        }
+
+        .btn-edit {
+            display: inline-block;
+            margin-top: 25px;
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #1abc9c, #27ae60);
+            color: white !important;
+            border-radius: 6px;
+            font-size: 16px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: 0.3s ease;
+        }
+
+        .btn-edit:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+        }
+    </style>
+</head>
+
+<body>
 
 <?php include "includes/header.php"; ?>
 
-<link rel="stylesheet" href="css/student.css">
+<div class="dashboard-container">
 
-<div class="form-container">
+    <h2 class="welcome">My Profile 👤</h2>
 
-    <h2>Update Profile ✏️</h2>
+    <div class="profile-card">
 
-    <?php if (!empty($success)) echo "<p class='success'>$success</p>"; ?>
+        <!-- ========================= -->
+        <!-- PERSONAL INFORMATION -->
+        <!-- ========================= -->
+        <div class="section-title">Personal Information</div>
 
-    <form method="POST">
+        <p><strong>Full Name:</strong> <?= htmlspecialchars($student['fullname']); ?></p>
+        <p><strong>Email:</strong> <?= htmlspecialchars($student['email']); ?></p>
 
-        <h3>Personal Information</h3>
-        <input type="date" name="date_of_birth" value="<?= $profile['date_of_birth'] ?? '' ?>" required>
-        <input type="text" name="phone" placeholder="Phone Number" value="<?= $profile['phone'] ?? '' ?>" required>
-        <input type="text" name="cnic" placeholder="CNIC" value="<?= $profile['cnic'] ?? '' ?>" required>
+        <p><strong>Date of Birth:</strong> <?= htmlspecialchars($profile['date_of_birth'] ?? 'Not added'); ?></p>
+        <p><strong>Phone:</strong> <?= htmlspecialchars($profile['phone'] ?? 'Not added'); ?></p>
+        <p><strong>CNIC:</strong> <?= htmlspecialchars($profile['cnic'] ?? 'Not added'); ?></p>
+        <p><strong>Gender:</strong> <?= htmlspecialchars($profile['gender'] ?? 'Not added'); ?></p>
 
-        <select name="gender" required>
-            <option value="">Select Gender</option>
-            <option value="Male" <?= ($profile['gender'] ?? '')=='Male'?'selected':'' ?>>Male</option>
-            <option value="Female" <?= ($profile['gender'] ?? '')=='Female'?'selected':'' ?>>Female</option>
-            <option value="Other" <?= ($profile['gender'] ?? '')=='Other'?'selected':'' ?>>Other</option>
-        </select>
 
-        <h3>Academic Information</h3>
-        <select name="education_level" required>
-            <option value="">Select Education Level</option>
-            <option value="Matric" <?= ($profile['education_level'] ?? '')=='Matric'?'selected':'' ?>>Matric</option>
-            <option value="Intermediate" <?= ($profile['education_level'] ?? '')=='Intermediate'?'selected':'' ?>>Intermediate</option>
-            <option value="Bachelors" <?= ($profile['education_level'] ?? '')=='Bachelors'?'selected':'' ?>>Bachelors</option>
-            <option value="Masters" <?= ($profile['education_level'] ?? '')=='Masters'?'selected':'' ?>>Masters</option>
-        </select>
+        <!-- ========================= -->
+        <!-- ACADEMIC DETAILS -->
+        <!-- ========================= -->
+        <div class="section-title">Academic Information</div>
 
-        <input type="text" name="subjects" placeholder="Subjects Studied" value="<?= $profile['subjects'] ?? '' ?>">
-        <input type="text" name="grades" placeholder="Grades / Marks" value="<?= $profile['grades'] ?? '' ?>">
+        <p><strong>Education Level:</strong> <?= htmlspecialchars($profile['education_level'] ?? 'Not added'); ?></p>
+        <p><strong>Subjects Studied:</strong> <?= htmlspecialchars($profile['subjects'] ?? 'Not added'); ?></p>
+        <p><strong>Grades / Marks:</strong> <?= htmlspecialchars($profile['grades'] ?? 'Not added'); ?></p>
 
-        <h3>Preferences</h3>
-        <input type="text" name="desired_field" placeholder="Desired Field of Study" value="<?= $profile['desired_field'] ?? '' ?>">
-        <input type="text" name="programs_interest" placeholder="Programs of Interest" value="<?= $profile['programs_interest'] ?? '' ?>">
-        <input type="text" name="preferred_city" placeholder="Preferred City / Location" value="<?= $profile['preferred_city'] ?? '' ?>">
 
-        <button type="submit">Save Profile</button>
-    </form>
+        <!-- ========================= -->
+        <!-- FUTURE & PREFERENCES -->
+        <!-- ========================= -->
+        <div class="section-title">Preferences & Goals</div>
+
+        <p><strong>Desired Field of Study:</strong> <?= htmlspecialchars($profile['desired_field'] ?? 'Not added'); ?></p>
+        <p><strong>Programs of Interest:</strong> <?= htmlspecialchars($profile['programs_interest'] ?? 'Not added'); ?></p>
+        <p><strong>Preferred City / Location:</strong> <?= htmlspecialchars($profile['preferred_city'] ?? 'Not added'); ?></p>
+
+    </div>
+
+    <a href="edit-profile.php" class="btn-edit">✏️ Edit Profile</a>
+
 </div>
 
 <?php include "includes/footer.php"; ?>
+
+</body>
+</html>
