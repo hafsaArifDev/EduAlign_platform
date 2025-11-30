@@ -10,17 +10,11 @@ if (!isset($_SESSION['student_id'])) {
 
 $student_id = $_SESSION['student_id'];
 
-// Student Profile لانا
+// Student preferences لیں
 $profile = $conn->prepare("SELECT preferences FROM students_profiles WHERE student_id = ?");
 $profile->execute([$student_id]);
 $student_pref = $profile->fetch(PDO::FETCH_ASSOC);
-
-// اگر profile نہ بنی ہوئی ہو
-if (!$student_pref) {
-    $preferences = "";
-} else {
-    $preferences = $student_pref['preferences'];
-}
+$preferences = $student_pref ? $student_pref['preferences'] : "";
 
 // Suggested Programs Query
 $query = $conn->prepare("
@@ -31,10 +25,11 @@ $query = $conn->prepare("
 ");
 $search = "%" . $preferences . "%";
 $query->execute([$search, $search, $search]);
-
 $programs = $query->fetchAll(PDO::FETCH_ASSOC);
-?>
 
+// ALL Programs Query
+$all_programs = $conn->query("SELECT * FROM programs ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
+?>
 <!DOCTYPE html>
 <html>
 <head>
@@ -51,10 +46,29 @@ $programs = $query->fetchAll(PDO::FETCH_ASSOC);
 <p>AI-matched degree programs based on your preferences.</p>
 
 <?php if (count($programs) === 0): ?>
-    <p>No programs found matching your preferences.</p>
+    <p>No programs match your interests.</p>
 <?php endif; ?>
 
 <?php foreach ($programs as $p): ?>
+<div class="program-box">
+    <h3><?= $p['program_name'] ?> (<?= $p['degree_level'] ?>)</h3>
+    <p><strong>University:</strong> <?= $p['university_name'] ?></p>
+    <p><strong>City:</strong> <?= $p['city'] ?></p>
+    <p><strong>Fee:</strong> <?= $p['fee'] ?></p>
+    <p><strong>Deadline:</strong> <?= $p['deadline'] ?></p>
+    <p><?= $p['description'] ?></p>
+
+    <a class="btn" href="apply-program.php?pid=<?= $p['id'] ?>">Apply Now</a>
+</div>
+<?php endforeach; ?>
+
+
+<hr style="margin:40px 0;">
+
+<h2>All Available Programs</h2>
+<p>These are all programs added by Admin.</p>
+
+<?php foreach ($all_programs as $p): ?>
 <div class="program-box">
     <h3><?= $p['program_name'] ?> (<?= $p['degree_level'] ?>)</h3>
     <p><strong>University:</strong> <?= $p['university_name'] ?></p>
