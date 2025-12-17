@@ -26,24 +26,71 @@ $notifications = $getNotes->fetchAll(PDO::FETCH_ASSOC);
     <title>Notifications</title>
     <link rel="stylesheet" href="css/faculty.css">
 
+    <!-- ONLY STYLING FIX -->
     <style>
+        body {
+            background: #f0f6f9;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 900px;
+            margin: 40px auto;
+        }
+
+        h2 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 25px;
+            background: linear-gradient(135deg, #1abc9c, #3498db);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .success {
+            background: #e6fffa;
+            color: #065f46;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
         .note {
             background: #ffffff;
-            padding: 15px;
-            margin: 12px 0;
-            border-radius: 8px;
-            box-shadow: 0 0 8px rgba(0,0,0,0.12);
+            padding: 16px 18px;
+            margin-bottom: 14px;
+            border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+            border-left: 5px solid #3498db;
         }
-        .unread {
-            border-left: 4px solid #3498db;
-            background: #ecf6ff;
+
+        .note.unread {
+            background: #f0f9ff;
+            border-left-color: #1abc9c;
         }
-        .note p { margin: 0; font-size: 15px; }
+
+        .note p {
+            margin: 0;
+            font-size: 15px;
+            color: #374151;
+        }
+
         .note span {
             display: block;
-            font-size: 12px;
             margin-top: 6px;
-            color: #777;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .empty {
+            background: #ffffff;
+            padding: 26px;
+            border-radius: 12px;
+            text-align: center;
+            color: #6b7280;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.08);
         }
     </style>
 </head>
@@ -53,22 +100,22 @@ $notifications = $getNotes->fetchAll(PDO::FETCH_ASSOC);
 
 <div class="container">
 
-<h2>Your Notifications</h2>
+    <h2>Your Notifications</h2>
 
-<?php if (isset($_GET['success'])): ?>
-    <p class="success">Job application submitted successfully!</p>
-<?php endif; ?>
+    <?php if (isset($_GET['success'])): ?>
+        <div class="success">Job application submitted successfully!</div>
+    <?php endif; ?>
 
-<?php if (count($notifications) == 0): ?>
-    <p>No notifications available.</p>
-<?php endif; ?>
+    <?php if (count($notifications) === 0): ?>
+        <div class="empty">No notifications available.</div>
+    <?php endif; ?>
 
-<?php foreach ($notifications as $n): ?>
-<div class="note <?= $n['status'] == 'unread' ? 'unread' : '' ?>">
-    <p><?= $n['message'] ?></p>
-    <span><?= $n['timestamp'] ?></span>
-</div>
-<?php endforeach; ?>
+    <?php foreach ($notifications as $n): ?>
+        <div class="note <?= $n['status'] == 'unread' ? 'unread' : '' ?>">
+            <p><?= $n['message'] ?></p>
+            <span><?= $n['timestamp'] ?></span>
+        </div>
+    <?php endforeach; ?>
 
 </div>
 

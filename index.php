@@ -1,30 +1,26 @@
 <?php
-// index.php — Option A: Dark Neon Landing Dashboard (EduAlign theme)
-// Single-file. Edit $main_admin_email to allow one admin.
-// Place in project root (where admin/, faculty/, students/ folders live).
-
 session_start();
 
-// CHANGE this to the real admin email
+// admin restriction removed completely
 $main_admin_email = "admin@example.com";
-
-// For quick local testing you can uncomment to simulate logged-in admin user:
-// $_SESSION['email'] = 'admin@example.com';
 
 if (isset($_GET['portal'])) {
     $p = $_GET['portal'];
+
     if ($p === 'admin') {
-        if (isset($_SESSION['email']) && $_SESSION['email'] === $main_admin_email) {
-            header("Location: admin/");
-            exit;
-        } else {
-            $error = "⚠️ Admin access restricted. Only the main admin can enter.";
-        }
+        header("Location: admin/dashboard.php");
+        exit;
+
     } elseif ($p === 'faculty') {
         header("Location: faculty/");
         exit;
+
     } elseif ($p === 'student') {
         header("Location: students/");
+        exit;
+
+    } elseif ($p === 'university') {   // ✔ اب صحیح جگہ پر ہے
+        header("Location: university/login.php"); // چاہیں تو login.php لکھیں
         exit;
     }
 }
@@ -200,7 +196,9 @@ if (isset($_GET['portal'])) {
   <div class="top-actions">
     <a class="btn-outline" href="?portal=student">Student</a>
     <a class="btn-outline" href="?portal=faculty">Faculty</a>
+    <a class="btn-outline" href="?portal=university">University</a>
     <a class="btn-outline" href="?portal=admin">Admin</a>
+  
   </div>
 </div>
 
@@ -280,12 +278,20 @@ if (isset($_GET['portal'])) {
     <span class="enter-btn">Enter Faculty</span>
   </a>
 
+    <a class="card" href="?portal=university" title="University Portal">
+    <div class="badge-restrict">Open</div>
+    <div class="icon">🧑‍🏫</div>
+    <h4>University Portal</h4>
+    <p>Manage classes, upload materials and monitor student progress with ease.</p>
+    <span class="enter-btn">Enter University</span>
+  </a>
+
   <a class="card" href="?portal=admin" title="Admin Portal">
-    <div class="badge-restrict">Restricted</div>
+    <div class="badge-restrict">Open</div>
     <div class="icon">🔐</div>
     <h4>Admin Portal</h4>
     <p>Visible to everyone; only the main administrator may access the admin area.</p>
-    <span class="enter-btn">Admin Access</span>
+    <span class="enter-btn">Enter Admin</span>
   </a>
 
 </section>

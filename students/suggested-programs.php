@@ -2,7 +2,9 @@
 session_start();
 require "../backend/db.php";
 
-// اگر student login نہ ہو
+/* =========================
+   AUTH CHECK
+   ========================= */
 if (!isset($_SESSION['student_id'])) {
     header("Location: login.php");
     exit;
@@ -10,26 +12,81 @@ if (!isset($_SESSION['student_id'])) {
 
 $student_id = $_SESSION['student_id'];
 
-// Student preferences لیں
-$profile = $conn->prepare("SELECT preferences FROM students_profiles WHERE student_id = ?");
+/* =========================
+   STUDENT PROFILE (AI TEXT)
+   ========================= */
+$profile = $conn->prepare("
+    SELECT preferences 
+    FROM students_profiles 
+    WHERE student_id = ?
+");
 $profile->execute([$student_id]);
 $student_pref = $profile->fetch(PDO::FETCH_ASSOC);
-$preferences = $student_pref ? $student_pref['preferences'] : "";
 
-// Suggested Programs Query
-$query = $conn->prepare("
-    SELECT * FROM programs 
-    WHERE program_name LIKE ? 
-       OR degree_level LIKE ?
-       OR city LIKE ?
-");
-$search = "%" . $preferences . "%";
-$query->execute([$search, $search, $search]);
+$studentText = $student_pref
+    ? $student_pref['preferences']
+    : "";
+
+/* =========================
+   FETCH PROGRAMS
+   ========================= */
+$query = $conn->query("SELECT * FROM programs ORDER BY id DESC");
 $programs = $query->fetchAll(PDO::FETCH_ASSOC);
 
-// ALL Programs Query
-$all_programs = $conn->query("SELECT * FROM programs ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
+/* =========================
+   AI FUNCTION (PHP → PYTHON)
+   ========================= */
+function ai_match_score($text1, $text2) {
+
+    $payload = json_encode([
+        "text1" => $text1,
+        "text2" => $text2
+    ]);
+
+    $ch = curl_init("http://127.0.0.1:5000/match");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    if (!$response) return 0;
+
+    $data = json_decode($response, true);
+    return $data["score"] ?? 0;
+}
+
+/* =========================
+   CALCULATE AI SCORE
+   ========================= */
+foreach ($programs as &$p) {
+
+    $programText =
+        $p['program_name'] . " " .
+        $p['degree_level'] . " " .
+        $p['city'] . " " .
+        $p['description'];
+
+    $p['ai_score'] = ai_match_score($studentText, $programText);
+}
+unset($p);
+
+/* =========================
+   SORT BY AI SCORE (DESC)
+   ========================= */
+usort($programs, function ($a, $b) {
+    return $b['ai_score'] <=> $a['ai_score'];
+});
+
+/* =========================
+   SPLIT: SUGGESTED vs ALL
+   ========================= */
+$suggested = array_filter($programs, fn($p) => $p['ai_score'] >= 0.15);
+$all_programs = $programs;
 ?>
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -42,44 +99,67 @@ $all_programs = $conn->query("SELECT * FROM programs ORDER BY id DESC")->fetchAl
 
 <div class="container">
 
-<h2>Suggested Programs</h2>
-<p>AI-matched degree programs based on your preferences.</p>
+    <!-- SUGGESTED PROGRAMS -->
+    <h2 class="section-title">Suggested Programs</h2>
+    <p class="section-desc">
+        AI-matched degree programs based on your preferences.
+    </p>
 
-<?php if (count($programs) === 0): ?>
-    <p>No programs match your interests.</p>
-<?php endif; ?>
+    <?php if (count($suggested) === 0): ?>
+        <div class="empty">No programs match your interests.</div>
+    <?php else: ?>
+        <div class="program-grid">
+            <?php foreach ($suggested as $p): ?>
+                <div class="program-box">
+                    <h3>
+                        <?= htmlspecialchars($p['program_name']) ?>
+                        (<?= htmlspecialchars($p['degree_level']) ?>)
+                    </h3>
 
-<?php foreach ($programs as $p): ?>
-<div class="program-box">
-    <h3><?= $p['program_name'] ?> (<?= $p['degree_level'] ?>)</h3>
-    <p><strong>University:</strong> <?= $p['university_name'] ?></p>
-    <p><strong>City:</strong> <?= $p['city'] ?></p>
-    <p><strong>Fee:</strong> <?= $p['fee'] ?></p>
-    <p><strong>Deadline:</strong> <?= $p['deadline'] ?></p>
-    <p><?= $p['description'] ?></p>
+                    <p><strong>University:</strong> <?= htmlspecialchars($p['university_name']) ?></p>
+                    <p><strong>City:</strong> <?= htmlspecialchars($p['city']) ?></p>
+                    <p><strong>Fee:</strong> <?= htmlspecialchars($p['fee']) ?></p>
+                    <p><strong>Deadline:</strong> <?= htmlspecialchars($p['deadline']) ?></p>
 
-    <a class="btn" href="apply-program.php?pid=<?= $p['id'] ?>">Apply Now</a>
-</div>
-<?php endforeach; ?>
+                    <p><?= nl2br(htmlspecialchars($p['description'])) ?></p>
 
+                    <a class="btn" href="apply-program.php?pid=<?= $p['id'] ?>">
+                        Apply Now
+                    </a>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 
-<hr style="margin:40px 0;">
+    <hr>
 
-<h2>All Available Programs</h2>
-<p>These are all programs added by Admin.</p>
+    <!-- ALL PROGRAMS -->
+    <h2 class="section-title">All Available Programs</h2>
+    <p class="section-desc">
+        These are all programs added by Admin.
+    </p>
 
-<?php foreach ($all_programs as $p): ?>
-<div class="program-box">
-    <h3><?= $p['program_name'] ?> (<?= $p['degree_level'] ?>)</h3>
-    <p><strong>University:</strong> <?= $p['university_name'] ?></p>
-    <p><strong>City:</strong> <?= $p['city'] ?></p>
-    <p><strong>Fee:</strong> <?= $p['fee'] ?></p>
-    <p><strong>Deadline:</strong> <?= $p['deadline'] ?></p>
-    <p><?= $p['description'] ?></p>
+    <div class="program-grid">
+        <?php foreach ($all_programs as $p): ?>
+            <div class="program-box">
+                <h3>
+                    <?= htmlspecialchars($p['program_name']) ?>
+                    (<?= htmlspecialchars($p['degree_level']) ?>)
+                </h3>
 
-    <a class="btn" href="apply-program.php?pid=<?= $p['id'] ?>">Apply Now</a>
-</div>
-<?php endforeach; ?>
+                <p><strong>University:</strong> <?= htmlspecialchars($p['university_name']) ?></p>
+                <p><strong>City:</strong> <?= htmlspecialchars($p['city']) ?></p>
+                <p><strong>Fee:</strong> <?= htmlspecialchars($p['fee']) ?></p>
+                <p><strong>Deadline:</strong> <?= htmlspecialchars($p['deadline']) ?></p>
+
+                <p><?= nl2br(htmlspecialchars($p['description'])) ?></p>
+
+                <a class="btn" href="apply-program.php?pid=<?= $p['id'] ?>">
+                    Apply Now
+                </a>
+            </div>
+        <?php endforeach; ?>
+    </div>
 
 </div>
 

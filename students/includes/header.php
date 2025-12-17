@@ -39,6 +39,25 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
+        .logout-btn {
+    background: white;
+    color: #e74c3c !important;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-weight: 700;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+}
+
+.logout-btn:hover {
+    background: #ffeaea;
+    transform: translateY(-2px);
+}
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* space between buttons */
+}
+
 
     </style>
 </head>
@@ -48,6 +67,9 @@
 <header class="main-header">
     <h1>EduAlign – Student Portal</h1>
 
+    <div class="header-right">
     <!-- NEW BUTTON ADDED HERE -->
     <a href="index.php" class="dash-btn">Student Dashboard</a>
+    <a href="/eduAlign-platform/students/logout.php" class="logout-btn">Logout</a>
+     </div>
 </header>
